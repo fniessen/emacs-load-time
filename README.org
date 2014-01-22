@@ -1,0 +1,127 @@
+#+TITLE:     Emacs load times
+#+AUTHOR:    Fabrice Niessen
+#+EMAIL:     fni@missioncriticalit.com
+#+Time-stamp: <2013-12-07 Sat 22:54>
+#+DESCRIPTION:
+#+KEYWORDS:
+#+LANGUAGE:  en
+#+OPTIONS:   H:4 num:t toc:2
+
+* Initial solution                                                   :noexport:
+
+#+begin_src emacs-lisp :results output table
+(setq txt nil)
+(with-current-buffer "*Messages*"
+  (goto-char (point-min))
+  (while (re-search-forward
+          ;; "^.*Requiring `\\(.+\\)' <from `emacs-\\(.+\\)'>... loaded in \\(.+\\) s$"
+          "^Retrieving newsgroup: \\(.+\\)"
+          nil t)
+    (setq txt
+          (concat txt
+                  (format "%s %s %s"
+                          (match-string 1) (match-string 2) (match-string 3))
+                  "\n"))
+    (princ txt)))
+#+end_src
+
+* Solution of Eric                                                   :noexport:
+
+#+begin_src emacs-lisp :results value
+  (let (txts)
+    (with-current-buffer "*Messages*"
+      (goto-char (point-min))
+      (while (re-search-forward
+          "^.*Requiring `\\(.+\\)' <from `emacs-\\(.+\\)'>... loaded in \\(.+\\) s$"
+              nil t)
+        (push (concat (match-string 1) " " (match-string 2) " " (match-string 3)) txts)))
+    txts)
+#+end_src
+
+* My new solution                                                    :noexport:
+
+#+name: echo-msg
+#+begin_src emacs-lisp :results value :results silent
+(with-current-buffer "*Messages*"
+  (buffer-string))
+#+end_src
+
+#+name: uniq-msg
+#+begin_src sh :stdin echo-msg :results output
+grep -E "loaded in " | sort | uniq
+#+end_src
+
+* Graphs
+
+#+name: dotgraph
+#+begin_src awk :stdin uniq-msg :results output :file emacs-load-time.dot
+BEGIN {
+    print "digraph G {"
+}
+
+! /XXX/ {
+    to = gensub(/.* `(.+)' .* `(.+)'.* loaded in (.+) s/, "\\1", "g")
+    from = gensub(/.* `(.+)' .* `(.+)'.* loaded in (.+) s/, "\\2", "g")
+    time = gensub(/.* `(.+)' .* `(.+)'.* loaded in (.+) s/, "\\3", "g")
+    time_ms = time * 1000
+    file = split(to, newto, "/")
+    print "  \"" from "\" -> " "\"" newto[file] "\""
+    printf "  \"" newto[file] "\" [label=\"" newto[file] "\\n" time * 1000 " ms\""
+    if (time_ms > 2000)     printf ", style=filled, fillcolor=\"red\""
+    else if (time_ms > 500) printf ", style=filled, fillcolor=\"orange\""
+    else if (time_ms > 200) printf ", style=filled, fillcolor=\"yellow\""
+    else if (time_ms > 100) printf ", style=filled, fillcolor=\"green\""
+    else if (time_ms > 50)  printf ", style=filled, fillcolor=\"#007AC3\"" # blue
+    else if (time_ms > 20)  printf ", style=filled, fillcolor=\"#D17FB6\"" # violet
+    else if (time_ms > 10)  printf ", style=filled, fillcolor=\"gray\""
+    printf "]\n"
+}
+
+END {
+    print "}"
+}
+#+end_src
+
+#+results: dotgraph
+[[file:emacs-load-time.dot]]
+
+#+name: draw-graphs
+#+begin_src sh :tangle draw-graphs
+#!/usr/bin/sh
+
+printf "Please wait...\n"
+for cmd in fdp dot
+do
+    $cmd -Gcharset=latin1 -Tpdf -oemacs-load-time-$cmd.pdf emacs-load-time.dot
+    $cmd -Gcharset=latin1 -Tpng -oemacs-load-time-$cmd.png emacs-load-time.dot
+done
+#+end_src
+
+** Dot
+
+[[file:emacs-load-time-dot.png]]
+
+** Fdp
+
+[[file:emacs-load-time-fdp.png]]
+
+* R table
+
+#+name: table
+#+begin_src awk :stdin uniq-msg :results table
+! /XXX/ {
+    to = gensub(/.* `(.+)' .* `(.+)'.* loaded in (.+) s/, "\\1", "g")
+    from = gensub(/.* `(.+)' .* `(.+)'.* loaded in (.+) s/, "\\2", "g")
+    time = gensub(/.* `(.+)' .* `(.+)'.* loaded in (.+) s/, "\\3", "g")
+    time_ms = time * 1000
+    file = split(to, newto, "/")
+    print newto[file] " " from " " time_ms
+}
+#+end_src
+
+#+begin_src R :var data=table :results graphics :file Rtable.png
+hist(data[, 3])
+#+end_src
+
+#+results:
+[[file:Rtable.png]]
