@@ -1,20 +1,18 @@
-# #+TITLE:     Emacs load time
+#+TITLE:     Emacs load time
 #+AUTHOR:    Fabrice Niessen
 #+EMAIL:     (concat "fniessen" at-sign "pirilampo.org")
-#+Time-stamp: <2014-01-22 Wed 22:30>
+#+Time-stamp: <2014-09-23 Tue 11:20>
 #+DESCRIPTION:
 #+KEYWORDS:
 #+LANGUAGE:  en
-#+OPTIONS:   H:4 num:t toc:2
+#+OPTIONS:   H:4 num:nil toc:2
 
-* Emacs load time
+* Description
 
-** Description
+The library ~emacs-load-time.el~ contains helper functions to add messages (in
+a tree layout, using Unicode characters) about the startup time of your Emacs.
 
-The library ~emacs-load-time.el~ contains helper functions to add messages about
-the startup time of your Emacs.
-
-** Install the Git version
+* Install the Git version
 
 Get the full Git repository at https://github.com/fniessen/emacs-load-time
 using the following command:
@@ -32,6 +30,6 @@ Add the following in your =.emacs= file:
 
 Restart Emacs.
 
-** License
+* License
 
 Copyright (C) 2014 Fabrice Niessen.
