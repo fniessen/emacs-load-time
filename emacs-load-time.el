@@ -1,10 +1,10 @@
 ;;; emacs-load-time.el --- Leave a trace of loaded packages (with timing)
 
-;; Copyright (C) 2013 Fabrice Niessen
+;; Copyright (C) 2013-2014 Fabrice Niessen
 
 ;; Author: Fabrice Niessen <(concat "fniessen" at-sign "pirilampo.org")>
 ;; URL: https://github.com/fniessen/emacs-load-time
-;; Version: 20131208.2340
+;; Version: 20140923.1021
 ;; Keywords: emacs, load time, packages, tree, performance
 
 ;; This file is NOT part of GNU Emacs.
@@ -58,7 +58,7 @@
 
 Return true if the library given as argument is successfully loaded. If not,
 instead of an error, just add the package to a list of missing packages."
-  (let ((prefix (concat (make-string (* 8 elt-require-depth) ? ) "    ")))
+  (let ((prefix (concat (make-string (* 4 elt-require-depth) ? ) "    ")))
     (condition-case err
         (progn                          ; protected form
           (if (stringp feature)
@@ -69,7 +69,7 @@ instead of an error, just add the package to a list of missing packages."
       (file-error
        (progn
          (when elt-verbose
-           (message "(Info) %sRequiring `%s' <from `%s'>... missing"
+           (message "(Info) %sRequiring %s <from %s>... missing"
                     prefix feature
                     (ignore-errors (file-name-base load-file-name))))
          (add-to-list 'elt-missing-packages feature 'append))
@@ -81,31 +81,32 @@ instead of an error, just add the package to a list of missing packages."
     "Locate Emacs library named LIBRARY and report time spent."
     (let ((filename (ad-get-arg 0))
           (time-start (float-time))
-          (prefix (concat (make-string (* 8 elt-require-depth) ? ) "    ")))
+          (prefix (concat (make-string (* 4 elt-require-depth) ? ) "    ")))
       (if ad-do-it
-          (message "(Info) %sLocating library `%s'... located (in %.3f s)"
+          (message "(Info) %sLocating library %s... located (in %.3f s)"
                    prefix filename
                    (- (float-time) time-start))
         (add-to-list 'elt-missing-packages filename 'append)
-        (message "(Info) %sLocating library `%s'... missing (in %.3f s)"
+        (message "(Info) %sLocating library %s... missing (in %.3f s)"
                  prefix filename
                  (- (float-time) time-start)))))
 
   (defadvice require (around leuven-require activate)
     "Leave a trace of packages being loaded."
     (let* ((feature (ad-get-arg 0))
-           (prefix-open (concat (make-string (* 8 elt-require-depth) ? ) "└── "))
-           (prefix-close (concat (make-string (* 8 elt-require-depth) ? ) "    ")))
+           (prefix-open (concat (make-string (* 4 elt-require-depth) ? ) "└─► "))
+           (prefix-close (concat (make-string (* 4 elt-require-depth) ? ) "    ")))
       (cond ((featurep feature)
-             (message "(Info) %sRequiring `%s' <from `%s'>... already loaded"
+             (message "(Info) %s%s <from %s>... already loaded"
                       prefix-open feature
-                      (ignore-errors (file-name-base load-file-name)))
+                      (ignore-errors (file-name-base load-file-name))
+                      )
              (setq ad-return-value feature)) ; set the return value in the case
                                              ; `ad-do-it' is not called
             (t
              (let ((time-start))
                (ad-disable-advice 'locate-library 'around 'leuven-locate-library)
-               (message "(Info) %sRequiring `%s' <from `%s'>... %s"
+               (message "(Info) %s%s <from %s>... %s"
                         prefix-open feature
                         (ignore-errors (file-name-base load-file-name))
                         (locate-library (symbol-name feature)))
@@ -113,7 +114,7 @@ instead of an error, just add the package to a list of missing packages."
                (setq time-start (float-time))
                (let ((elt-require-depth (1+ elt-require-depth)))
                  ad-do-it)
-               (message "(Info) %sRequiring `%s' <from `%s'>... loaded in %.3f s"
+               (message "(Info) %s%s <from %s>... loaded in %.3f s"
                         prefix-close feature
                         (ignore-errors (file-name-base load-file-name))
                         (- (float-time) time-start)))))))
@@ -122,10 +123,10 @@ instead of an error, just add the package to a list of missing packages."
      "Execute a file of Lisp code named FILE and report time spent."
      (let ((filename (ad-get-arg 0))
            (time-start (float-time))
-           (prefix-open (concat (make-string (* 8 elt-require-depth) ? ) "└── "))
-           (prefix-close (concat (make-string (* 8 elt-require-depth) ? ) "    ")))
+           (prefix-open (concat (make-string (* 4 elt-require-depth) ? ) "└─● "))
+           (prefix-close (concat (make-string (* 4 elt-require-depth) ? ) "    ")))
        (ad-disable-advice 'locate-library 'around 'leuven-locate-library)
-       (message "(Info) %sLoading `%s' <from `%s'>...%s"
+       (message "(Info) %s%s <from %s>...%s"
                 prefix-open filename
                 (ignore-errors (file-name-base load-file-name))
                 (ignore-errors
@@ -137,7 +138,7 @@ instead of an error, just add the package to a list of missing packages."
                     "")))               ; don't print full file name once again!
        (ad-activate 'locate-library)
        ad-do-it
-       (message "(Info) %sLoading `%s' <from `%s'>... loaded in %.3f s"
+       (message "(Info) %s%s <from %s>... loaded in %.3f s"
                 prefix-close filename
                 (ignore-errors (file-name-base load-file-name))
                 (- (float-time) time-start))))
@@ -149,11 +150,11 @@ instead of an error, just add the package to a list of missing packages."
     `(eval-after-load ,file
        '(progn
           (let ((time-start))
-            (message "(Info) {{{ Running code block specific to `%s'..."
+            (message "(Info) {{{ Running code block specific to %s..."
                      ,file)
             (setq time-start (float-time))
             ,@body
-            (message "(Info) }}} Running code block specific to `%s'... done in %.3f s"
+            (message "(Info) }}} Running code block specific to %s... done in %.3f s"
                      ,file
                      (- (float-time) time-start)))))))
 
@@ -162,7 +163,7 @@ instead of an error, just add the package to a list of missing packages."
              ;; warn that some packages were missing
              (when elt-verbose
                (dolist (pkg elt-missing-packages)
-                 (message "(warning) Package `%s' not found" pkg))))
+                 (message "(warning) Package %s not found" pkg))))
              t)
 
 ;;---------------------------------------------------------------------------
